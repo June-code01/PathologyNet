@@ -97,3 +97,77 @@
 (define-data-var next-test-id uint u1)
 
 (define-constant contract-owner tx-sender)
+
+(define-public (register-pathologist
+  (pathologist-id principal)
+  (full-name (string-ascii 100))
+  (medical-license (string-ascii 50))
+  (subspecialty (string-ascii 100))
+  (board-certification (string-ascii 50))
+  (years-experience uint))
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) ERR_NOT_AUTHORIZED)
+    (map-set pathologist-profiles
+      { pathologist-id: pathologist-id }
+      {
+        full-name: full-name,
+        medical-license: medical-license,
+        subspecialty: subspecialty,
+        board-certification: board-certification,
+        years-experience: years-experience,
+        case-load: u0,
+        accuracy-rating: u95,
+        is-active: true
+      }
+    )
+    (ok true)
+  )
+)
+
+(define-public (submit-pathology-sample
+  (patient-id principal)
+  (sample-type (string-ascii 50))
+  (anatomical-site (string-ascii 100))
+  (preservation-method (string-ascii 50))
+  (assigned-pathologist principal)
+  (processing-priority (string-ascii 20))
+  (chain-of-custody (string-ascii 200)))
+  (let ((sample-id (var-get next-sample-id))
+        (pathologist-data (unwrap! (map-get? pathologist-profiles { pathologist-id: assigned-pathologist }) ERR_INVALID_PATHOLOGIST)))
+    (asserts! (get is-active pathologist-data) ERR_INVALID_PATHOLOGIST)
+    (map-set pathology-samples
+      { sample-id: sample-id }
+      {
+        patient-id: patient-id,
+        collecting-physician: tx-sender,
+        sample-type: sample-type,
+        anatomical-site: anatomical-site,
+        collection-date: block-height,
+        preservation-method: preservation-method,
+        assigned-pathologist: assigned-pathologist,
+        processing-priority: processing-priority,
+        sample-quality: "acceptable",
+        chain-of-custody: chain-of-custody
+      }
+    )
+    (map-set pathologist-profiles
+      { pathologist-id: assigned-pathologist }
+      (merge pathologist-data { case-load: (+ (get case-load pathologist-data) u1) })
+    )
+    (var-set next-sample-id (+ sample-id u1))
+    (ok sample-id)
+  )
+)
+
+(define-public (update-sample-quality
+  (sample-id uint)
+  (sample-quality (string-ascii 30)))
+  (let ((sample-data (unwrap! (map-get? pathology-samples { sample-id: sample-id }) ERR_SAMPLE_NOT_FOUND)))
+    (asserts! (is-eq tx-sender (get assigned-pathologist sample-data)) ERR_NOT_AUTHORIZED)
+    (map-set pathology-samples
+      { sample-id: sample-id }
+      (merge sample-data { sample-quality: sample-quality })
+    )
+    (ok true)
+  )
+)
