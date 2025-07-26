@@ -171,3 +171,84 @@
     (ok true)
   )
 )
+
+(define-public (submit-diagnosis
+  (sample-id uint)
+  (primary-diagnosis (string-ascii 200))
+  (secondary-diagnoses (string-ascii 300))
+  (microscopic-findings (string-ascii 500))
+  (immunohistochemistry (string-ascii 300))
+  (molecular-markers (string-ascii 200))
+  (grade-stage (string-ascii 100))
+  (margins-status (string-ascii 100))
+  (diagnosis-confidence uint))
+  (let ((sample-data (unwrap! (map-get? pathology-samples { sample-id: sample-id }) ERR_SAMPLE_NOT_FOUND))
+        (existing-diagnosis (map-get? pathology-diagnoses { sample-id: sample-id })))
+    (asserts! (is-eq tx-sender (get assigned-pathologist sample-data)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-none existing-diagnosis) ERR_DIAGNOSIS_EXISTS)
+    (asserts! (not (is-eq (get sample-quality sample-data) "contaminated")) ERR_SAMPLE_CONTAMINATED)
+    (map-set pathology-diagnoses
+      { sample-id: sample-id }
+      {
+        primary-diagnosis: primary-diagnosis,
+        secondary-diagnoses: secondary-diagnoses,
+        microscopic-findings: microscopic-findings,
+        immunohistochemistry: immunohistochemistry,
+        molecular-markers: molecular-markers,
+        grade-stage: grade-stage,
+        margins-status: margins-status,
+        diagnosis-confidence: diagnosis-confidence,
+        pathologist-id: tx-sender,
+        diagnosis-date: block-height
+      }
+    )
+    (ok true)
+  )
+)
+
+(define-public (request-second-opinion
+  (sample-id uint)
+  (consulting-pathologist principal)
+  (consultation-reason (string-ascii 200)))
+  (let ((sample-data (unwrap! (map-get? pathology-samples { sample-id: sample-id }) ERR_SAMPLE_NOT_FOUND))
+        (consultant-data (unwrap! (map-get? pathologist-profiles { pathologist-id: consulting-pathologist }) ERR_INVALID_PATHOLOGIST))
+        (opinion-id (var-get next-opinion-id)))
+    (asserts! (is-eq tx-sender (get assigned-pathologist sample-data)) ERR_NOT_AUTHORIZED)
+    (asserts! (get is-active consultant-data) ERR_INVALID_PATHOLOGIST)
+    (map-set second-opinions
+      { sample-id: sample-id, opinion-id: opinion-id }
+      {
+        requesting-pathologist: tx-sender,
+        consulting-pathologist: consulting-pathologist,
+        consultation-reason: consultation-reason,
+        consultant-findings: "",
+        agreement-level: "pending",
+        consultation-date: block-height,
+        final-recommendation: ""
+      }
+    )
+    (var-set next-opinion-id (+ opinion-id u1))
+    (ok opinion-id)
+  )
+)
+
+(define-public (provide-consultation
+  (sample-id uint)
+  (opinion-id uint)
+  (consultant-findings (string-ascii 400))
+  (agreement-level (string-ascii 30))
+  (final-recommendation (string-ascii 300)))
+  (let ((opinion-data (unwrap! (map-get? second-opinions { sample-id: sample-id, opinion-id: opinion-id }) ERR_SAMPLE_NOT_FOUND)))
+    (asserts! (is-eq tx-sender (get consulting-pathologist opinion-data)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-eq (get agreement-level opinion-data) "pending") ERR_NOT_AUTHORIZED)
+    (map-set second-opinions
+      { sample-id: sample-id, opinion-id: opinion-id }
+      (merge opinion-data {
+        consultant-findings: consultant-findings,
+        agreement-level: agreement-level,
+        final-recommendation: final-recommendation
+      })
+    )
+    (ok true)
+  )
+)
