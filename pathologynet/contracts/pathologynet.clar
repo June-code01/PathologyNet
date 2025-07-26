@@ -142,7 +142,7 @@
         collecting-physician: tx-sender,
         sample-type: sample-type,
         anatomical-site: anatomical-site,
-        collection-date: block-height,
+        collection-date: stacks-block-height,
         preservation-method: preservation-method,
         assigned-pathologist: assigned-pathologist,
         processing-priority: processing-priority,
@@ -199,7 +199,7 @@
         margins-status: margins-status,
         diagnosis-confidence: diagnosis-confidence,
         pathologist-id: tx-sender,
-        diagnosis-date: block-height
+        diagnosis-date: stacks-block-height
       }
     )
     (ok true)
@@ -223,7 +223,7 @@
         consultation-reason: consultation-reason,
         consultant-findings: "",
         agreement-level: "pending",
-        consultation-date: block-height,
+        consultation-date: stacks-block-height,
         final-recommendation: ""
       }
     )
@@ -266,7 +266,7 @@
       { sample-id: sample-id }
       {
         qa-reviewer: tx-sender,
-        review-date: block-height,
+        review-date: stacks-block-height,
         staining-quality: staining-quality,
         sectioning-quality: sectioning-quality,
         diagnostic-accuracy: diagnostic-accuracy,
@@ -298,7 +298,7 @@
         target-genes: target-genes,
         test-results: test-results,
         clinical-significance: clinical-significance,
-        test-date: block-height
+        test-date: stacks-block-height
       }
     )
     (var-set next-test-id (+ test-id u1))
