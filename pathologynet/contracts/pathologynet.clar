@@ -252,3 +252,92 @@
     (ok true)
   )
 )
+
+(define-public (conduct-quality-assurance
+  (sample-id uint)
+  (staining-quality (string-ascii 30))
+  (sectioning-quality (string-ascii 30))
+  (diagnostic-accuracy (string-ascii 30))
+  (corrective-actions (string-ascii 200))
+  (qa-passed bool))
+  (let ((sample-data (unwrap! (map-get? pathology-samples { sample-id: sample-id }) ERR_SAMPLE_NOT_FOUND)))
+    (asserts! (is-eq tx-sender contract-owner) ERR_NOT_AUTHORIZED)
+    (map-set quality-assurance
+      { sample-id: sample-id }
+      {
+        qa-reviewer: tx-sender,
+        review-date: block-height,
+        staining-quality: staining-quality,
+        sectioning-quality: sectioning-quality,
+        diagnostic-accuracy: diagnostic-accuracy,
+        corrective-actions: corrective-actions,
+        qa-passed: qa-passed
+      }
+    )
+    (ok true)
+  )
+)
+
+(define-public (add-molecular-test
+  (sample-id uint)
+  (test-type (string-ascii 100))
+  (testing-lab principal)
+  (test-method (string-ascii 50))
+  (target-genes (string-ascii 200))
+  (test-results (string-ascii 400))
+  (clinical-significance (string-ascii 300)))
+  (let ((sample-data (unwrap! (map-get? pathology-samples { sample-id: sample-id }) ERR_SAMPLE_NOT_FOUND))
+        (test-id (var-get next-test-id)))
+    (asserts! (is-eq tx-sender (get assigned-pathologist sample-data)) ERR_NOT_AUTHORIZED)
+    (map-set molecular-testing
+      { sample-id: sample-id, test-id: test-id }
+      {
+        test-type: test-type,
+        testing-lab: testing-lab,
+        test-method: test-method,
+        target-genes: target-genes,
+        test-results: test-results,
+        clinical-significance: clinical-significance,
+        test-date: block-height
+      }
+    )
+    (var-set next-test-id (+ test-id u1))
+    (ok test-id)
+  )
+)
+
+(define-read-only (get-pathology-sample (sample-id uint))
+  (map-get? pathology-samples { sample-id: sample-id })
+)
+
+(define-read-only (get-pathology-diagnosis (sample-id uint))
+  (map-get? pathology-diagnoses { sample-id: sample-id })
+)
+
+(define-read-only (get-pathologist-profile (pathologist-id principal))
+  (map-get? pathologist-profiles { pathologist-id: pathologist-id })
+)
+
+(define-read-only (get-second-opinion (sample-id uint) (opinion-id uint))
+  (map-get? second-opinions { sample-id: sample-id, opinion-id: opinion-id })
+)
+
+(define-read-only (get-quality-assurance (sample-id uint))
+  (map-get? quality-assurance { sample-id: sample-id })
+)
+
+(define-read-only (get-molecular-test (sample-id uint) (test-id uint))
+  (map-get? molecular-testing { sample-id: sample-id, test-id: test-id })
+)
+
+(define-read-only (get-next-sample-id)
+  (var-get next-sample-id)
+)
+
+(define-read-only (get-next-opinion-id)
+  (var-get next-opinion-id)
+)
+
+(define-read-only (get-next-test-id)
+  (var-get next-test-id)
+)
